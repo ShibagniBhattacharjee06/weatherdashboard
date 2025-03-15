@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>India Weather Dashboard</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.7.0/chart.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, #73a6e3 0%, #257ae3 100%);
+            color: #333;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+            color:#070546
+        }
+
+        .header {
+            color: rgb(6, 27, 90);
+            text-align: center;
+            margin-bottom: 2rem;
+            padding: 1rem;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            backdrop-filter: blur(10px);
+        }
+
+        .search-container {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 1.5rem;
+            border-radius: 10px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            margin-bottom: 2rem;
+            transition: transform 0.3s ease;
+        }
+
+        .search-container:hover {
+            transform: translateY(-5px);
+        }
+
+        .search-box {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        select, button, input[type="date"] {
+            padding: 0.75rem 1rem;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 1rem;
+        }
+
+        select, input[type="date"] {
+            flex: 1;
+            background: white;
+            cursor: pointer;
+            min-width: 200px;
+        }
+
+        button {
+            background: #069bf2;
+            color: white;
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        button:hover {
+            background: #057ded;
+            transform: scale(1.05);
+        }
+
+        .weather-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .weather-card {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 1.5rem;
+            border-radius: 10px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            transition: transform 0.3s ease;
+        }
+
+        .weather-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .main-temp {
+            font-size: 3rem;
+            font-weight: bold;
+            margin: 1rem 0;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            color: #0b67d0;
+        }
+
+        .weather-icon {
+            width: 80px;
+            height: 80px;
+            object-fit: contain;
+            color:#057ded
+        }
+
+        .weather-details {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .detail-item {
+            text-align: center;
+            padding: 1rem;
+            background: rgba(42, 82, 152, 0.1);
+            border-radius: 10px;
+            transition: all 0.3s ease;
+        }
+
+        .detail-item:hover {
+            background: rgba(42, 82, 152, 0.2);
+            transform: scale(1.05);
+        }
+
+        .detail-item i {
+            font-size: 1.5rem;
+            color: #2a5298;
+            margin-bottom: 0.5rem;
+        }
+
+        .detail-item span {
+            display: block;
+            font-size: 0.9rem;
+            color: #666;
+        }
+
+        .detail-item strong {
+            display: block;
+            margin-top: 0.25rem;
+            font-size: 1.1rem;
+            color: #083a97;
+        }
+
+        .chart-container {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 1.5rem;
+            border-radius: 10px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            margin-top: 2rem;
+            height: 600px;
+        }
+
+        .aqi-indicator {
+            text-align: center;
+            font-size: 1.2rem;
+            margin: 1rem 0;
+            padding: 1rem;
+            border-radius: 10px;
+            color: white;
+        }
+
+        .good { background: #4CAF50; }
+        .fair { background: #8BC34A; }
+        .moderate { background: #FFC107; }
+        .poor { background: #FF5722; }
+        .very-poor { background: #D32F2F; }
+
+        @media (max-width: 768px) {
+            .weather-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .search-box {
+                flex-direction: column;
+            }
+            
+            .main-temp {
+                font-size: 2.5rem;
+            }
+        }
+
+        .loading {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .loading.active {
+            display: flex;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 60px;
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid #3498db;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .date-warning {
+            color: #D32F2F;
+            margin-top: 0.5rem;
+            font-size: 0.9rem;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="loading">
+        <div class="spinner"></div>
+    </div>
+
+    <div class="container">
+        <div class="header">
+            <h1>India Weather Dashboard</h1>
+        </div>
+
+        <div class="search-container">
+            <div class="search-box">
+                <select id="stateSelect">
+                    <option value="">Select State</option>
+                </select>
+                <input type="date" id="dateSelect">
+                <button onclick="getWeather()">
+                    <i class="fas fa-search"></i>
+                    Get Weather
+                </button>
+            </div>
+            <p id="dateWarning" class="date-warning">Historical data is limited. Showing current weather instead.</p>
+        </div>
+
+        <div class="weather-grid">
+            <div class="weather-card">
+                <h2 id="location">Select a state</h2>
+                <div class="main-temp">
+                    <img id="weatherIcon" class="weather-icon" src="icon.png" alt="Weather icon">
+                    <span id="temperature">°C</span>
+                </div>
+                <p id="description">Weather description</p>
+                <div class="weather-details">
+                    <div class="detail-item">
+                        <i class="fas fa-tint"></i>
+                        <span>Humidity</span>
+                        <strong id="humidity">%</strong>
+                    </div>
+                    <div class="detail-item">
+                        <i class="fas fa-wind"></i>
+                        <span>Wind Speed</span>
+                        <strong id="windSpeed">km/h</strong>
+                    </div>
+                    <div class="detail-item">
+                        <i class="fas fa-compress-arrows-alt"></i>
+                        <span>Pressure</span>
+                        <strong id="pressure">hPa</strong>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="weather-card">
+                <h2>Air Quality Index</h2>
+                <div id="aqiData">Select a state to view AQI</div>
+            </div>
+        </div>
+
+        <div class="chart-container">
+            <canvas id="tempChart"></canvas>
+        </div>
+    </div>
+
+    <script>
+        const API_KEY = '02d9f4ba49f457523ba4877980df47fc';
+        let chart;
+
+        const indianStates = [
+            "Andhra Pradesh", "Arunachal Pradesh", "Assam", "Bihar", 
+            "Chhattisgarh", "Goa", "Gujarat", "Haryana", "Himachal Pradesh", 
+            "Jharkhand", "Karnataka", "Kerala", "Madhya Pradesh", "Maharashtra", 
+            "Manipur", "Meghalaya", "Mizoram", "Nagaland", "Odisha", "Punjab", 
+            "Rajasthan", "Sikkim", "Tamil Nadu", "Telangana", "Tripura", 
+            "Uttar Pradesh", "Uttarakhand", "West Bengal", "Delhi"
+        ];
+
+        
+        const today = new Date().toISOString().split('T')[0];
+        document.getElementById('dateSelect').value = today;
+        document.getElementById('dateSelect').max = today;
+
+        
+        const stateSelect = document.getElementById('stateSelect');
+        indianStates.sort().forEach(state => {
+            const option = document.createElement('option');
+            option.value = state;
+            option.textContent = state;
+            stateSelect.appendChild(option);
+        });
+
+        function showLoading() {
+            document.querySelector('.loading').classList.add('active');
+        }
+
+        function hideLoading() {
+            document.querySelector('.loading').classList.remove('active');
+        }
+
+        async function getWeather() {
+            const state = document.getElementById('stateSelect').value;
+            const selectedDate = document.getElementById('dateSelect').value;
+            const dateWarning = document.getElementById('dateWarning');
+            
+            if (!state) {
+                alert('Please select a state');
+                return;
+            }
+
+            showLoading();
+            dateWarning.style.display = 'none';
+
+            try {
+                
+                const weatherResponse = await fetch(
+                    `https://api.openweathermap.org/data/2.5/weather?q=${state},IN&units=metric&appid=${API_KEY}`
+                );
+                const weatherData = await weatherResponse.json();
+
+                if (weatherData.cod !== 200) {
+                    throw new Error(weatherData.message);
+                }
+
+                
+                if (selectedDate !== today) {
+                    dateWarning.style.display = 'block';
+                }
+
+                
+                document.getElementById('location').textContent = `${state}, India`;
+                document.getElementById('temperature').textContent = `${Math.round(weatherData.main.temp)}°C`;
+                document.getElementById('description').textContent = 
+                    weatherData.weather[0].description.charAt(0).toUpperCase() + 
+                    weatherData.weather[0].description.slice(1);
+                document.getElementById('humidity').textContent = `${weatherData.main.humidity}%`;
+                document.getElementById('windSpeed').textContent = `${(weatherData.wind.speed * 3.6).toFixed(1)} km/h`;
+                document.getElementById('pressure').textContent = `${weatherData.main.pressure} hPa`;
+                document.getElementById('weatherIcon').src = 
+                    `https://openweathermap.org/img/wn/${weatherData.weather[0].icon}@2x.png`;
+
+                
+                const forecastResponse = await fetch(
+                    `https://api.openweathermap.org/data/2.5/forecast?q=${state},IN&units=metric&appid=${API_KEY}`
+                );
+                const forecastData = await forecastResponse.json();
+
+                
+                const temps = forecastData.list.slice(0, 8).map(item => ({
+                    time: new Date(item.dt * 1000).toLocaleTimeString('en-US', {
+                        hour: 'numeric',
+                        hour12: true
+                    }),
+                    temp: Math.round(item.main.temp)
+                }));
+
+                updateChart(temps);
+
+                
+                const lat = weatherData.coord.lat;
+                const lon = weatherData.coord.lon;
+                const aqiResponse = await fetch(
+                    `https://api.openweathermap.org/data/2.5/air_pollution?lat=${lat}&lon=${lon}&appid=${API_KEY}`
+                );
+                const aqiData = await aqiResponse.json();
+                updateAQI(aqiData);
+
+            } catch (error) {
+                console.error('Error fetching weather data:', error);
+                if (error.message.includes('401')) {
+                    alert('Invalid API key. Please check your configuration.');
+                } else {
+                    alert('Error fetching weather data. Please try again.');
+                }
+            } finally {
+                hideLoading();
+            }
+        }
+
+        function getAQIClass(aqi) {
+            const classes = {
+                1: 'good',
+                2: 'fair',
+                3: 'moderate',
+                4: 'poor',
+                5: 'very-poor'
+            };
+            return classes[aqi] || 'moderate';
+        }
+
+        function updateAQI(data) {
+            const aqi = data.list[0].main.aqi;
+            const aqiLevels = {
+                1: 'Good',
+                2: 'Fair',
+                3: 'Moderate',
+                4: 'Poor',
+                5: 'Very Poor'
+            };
+            
+            document.getElementById('aqiData').innerHTML = `
+            <div class="aqi-indicator ${getAQIClass(aqi)}">
+                ${aqiLevels[aqi]}
+            </div>
+            <div class="weather-details">
+                <div class="detail-item">
+                    <i class="fas fa-smog"></i>
+                    <span>PM2.5</span>
+                    <strong>${data.list[0].components.pm2_5.toFixed(1)} µg/m³</strong>
+                </div>
+                <div class="detail-item">
+                    <i class="fas fa-wind"></i>
+                    <span>PM10</span>
+                    <strong>${data.list[0].components.pm10.toFixed(1)} µg/m³</strong>
+                </div>
+                <div class="detail-item">
+                    <i class="fas fa-cloud"></i>
+                    <span>NO₂</span>
+                    <strong>${data.list[0].components.no2.toFixed(1)} µg/m³</strong>
+                </div>
+            </div>
+        `;
+    }
+
+    function updateChart(data) {
+        const ctx = document.getElementById('tempChart').getContext('2d');
+        
+        if (chart) {
+            chart.destroy();
+        }
+
+        chart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: data.map(item => item.time),
+                datasets: [{
+                    label: 'Temperature (°C)',
+                    data: data.map(item => item.temp),
+                    borderColor: '#2a5298',
+                    backgroundColor: 'rgba(42, 82, 152, 0.1)',
+                    tension: 0.1,
+                    fill: false
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    title: {
+                        display: true,
+                        text: 'Temperature Forecast'
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: false
+                    }
+                }
+            }
+        });
+    }
+
+    
+    if (stateSelect.value) {
+        getWeather();
+    }
+</script>
+</body>
+</html>
